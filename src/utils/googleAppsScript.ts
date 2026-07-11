@@ -33,6 +33,10 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
 const DRIVE_FOLDER_ID = ""; // Kosongkan jika ingin menyimpannya di folder root Drive Anda, atau isi dengan ID Folder Drive khusus
 
 function doGet(e) {
+  if (!e || !e.parameter) {
+    return ContentService.createTextOutput("Halo! Google Apps Script Anda telah aktif dan berjalan dengan baik. \n\nCatatan: Jangan menjalankan fungsi 'doGet' langsung dengan menekan tombol 'Run' / 'Jalankan' di editor Apps Script karena parameter event (e) akan kosong (undefined). \n\nSilakan lakukan 'Deploy' -> 'New Deployment' -> pilih 'Web App' dan gunakan URL web app tersebut pada pengaturan integrasi database di aplikasi.")
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
   const action = e.parameter.action;
   const sheetName = e.parameter.sheet;
   
@@ -77,6 +81,10 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  if (!e || (!e.postData && !e.parameter)) {
+    return ContentService.createTextOutput("Halo! Google Apps Script Anda telah aktif dan berjalan dengan baik. \n\nCatatan: Jangan menjalankan fungsi 'doPost' langsung dengan menekan tombol 'Run' / 'Jalankan' di editor Apps Script karena parameter event (e) akan kosong (undefined). \n\nSilakan lakukan 'Deploy' -> 'New Deployment' -> pilih 'Web App' dan gunakan URL web app tersebut pada pengaturan integrasi database di aplikasi.")
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
   let postData;
   const headers = {
     "Access-Control-Allow-Origin": "*",
