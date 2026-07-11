@@ -17,7 +17,8 @@ const DEFAULT_CONFIG: SystemConfig = {
   useMock: true,
   spreadsheetUrl: '',
   driveFolderId: '',
-  customLogo: ''
+  customLogo: '',
+  customMap: ''
 };
 
 // Initialize LocalStorage with mock data if not already exists

@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Database, RefreshCw, Key, ShieldAlert, CheckCircle, 
-  Trash2, UserPlus, Server, Copy, HelpCircle, Save, Image, Upload
+  Trash2, UserPlus, Server, Copy, HelpCircle, Save, Image, Upload, Globe
 } from 'lucide-react';
 import { SystemConfig, User, UserRole } from '../types';
 import { apiService } from '../utils/apiService';
@@ -39,11 +39,22 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
   const [isDragging, setIsDragging] = React.useState(false);
   const [logoSaveStatus, setLogoSaveStatus] = React.useState<'idle' | 'saved' | 'error'>('idle');
 
+  // Map state
+  const [mapBase64, setMapBase64] = React.useState(config.customMap || '');
+  const [isDraggingMap, setIsDraggingMap] = React.useState(false);
+  const [mapSaveStatus, setMapSaveStatus] = React.useState<'idle' | 'saved' | 'error'>('idle');
+
   React.useEffect(() => {
     if (config.customLogo !== undefined) {
       setLogoBase64(config.customLogo);
     }
   }, [config.customLogo]);
+
+  React.useEffect(() => {
+    if (config.customMap !== undefined) {
+      setMapBase64(config.customMap);
+    }
+  }, [config.customMap]);
 
   const handleLogoFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -64,6 +75,29 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
     };
     reader.onerror = () => {
       alert('Gagal membaca file gambar logo.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleMapFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('File harus berupa format gambar (PNG, JPG, JPEG, atau SVG)!');
+      return;
+    }
+    // Check file size (keep it reasonable, e.g., under 1.5MB for localStorage)
+    if (file.size > 1.5 * 1024 * 1024) {
+      alert('Ukuran berkas peta terlalu besar (maksimal 1.5 MB agar tersimpan dengan baik di sistem local!).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setMapBase64(base64);
+      setMapSaveStatus('idle');
+    };
+    reader.onerror = () => {
+      alert('Gagal membaca file gambar peta.');
     };
     reader.readAsDataURL(file);
   };
@@ -91,6 +125,29 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
     }
   };
 
+  const handleDragOverMap = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingMap(true);
+  };
+
+  const handleDragLeaveMap = () => {
+    setIsDraggingMap(false);
+  };
+
+  const handleDropMap = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingMap(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleMapFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleMapFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleMapFile(e.target.files[0]);
+    }
+  };
+
   const handleSaveLogo = () => {
     try {
       onConfigSave({
@@ -101,6 +158,19 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
       setTimeout(() => setLogoSaveStatus('idle'), 3000);
     } catch (err) {
       setLogoSaveStatus('error');
+    }
+  };
+
+  const handleSaveMap = () => {
+    try {
+      onConfigSave({
+        ...config,
+        customMap: mapBase64
+      });
+      setMapSaveStatus('saved');
+      setTimeout(() => setMapSaveStatus('idle'), 3000);
+    } catch (err) {
+      setMapSaveStatus('error');
     }
   };
 
@@ -116,13 +186,27 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
     }
   };
 
+  const handleResetMap = () => {
+    if (window.confirm('Apakah Anda yakin ingin mengembalikan peta NTB ke default (Peta Interaktif)?')) {
+      setMapBase64('');
+      onConfigSave({
+        ...config,
+        customMap: ''
+      });
+      setMapSaveStatus('saved');
+      setTimeout(() => setMapSaveStatus('idle'), 3000);
+    }
+  };
+
   const handleConfigSave = (e: React.FormEvent) => {
     e.preventDefault();
     onConfigSave({
       apiUrl,
       spreadsheetUrl,
       driveFolderId,
-      useMock
+      useMock,
+      customLogo: logoBase64,
+      customMap: mapBase64
     });
     alert('Konfigurasi sistem berhasil disimpan!');
   };
@@ -208,7 +292,7 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
         {[
           { id: 'database', label: 'Integrasi Database', icon: Server },
           { id: 'user', label: 'Pengelolaan Pengguna', icon: Key },
-          { id: 'logo', label: 'Import Logo', icon: Image },
+          { id: 'logo', label: 'Import Logo & Peta', icon: Image },
           { id: 'panduan', label: 'Panduan Pemasangan', icon: HelpCircle }
         ].map(tab => {
           const IconComp = tab.icon;
@@ -483,9 +567,10 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
         </div>
       )}
 
-      {/* Panel: Import Logo */}
+      {/* Panel: Import Logo & Peta */}
       {activeSubTab === 'logo' && (
         <div className="space-y-6 animate-fade-in">
+          {/* Card 1: Logo Upload */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm space-y-4">
             <div>
               <h3 className="text-md font-bold text-gray-800 dark:text-white flex items-center gap-2">
@@ -553,7 +638,7 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
 
                 {logoSaveStatus === 'saved' && (
                   <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 text-xs font-semibold animate-fade-in">
-                    <CheckCircle className="w-4.5 h-4.5" />
+                     <CheckCircle className="w-4.5 h-4.5" />
                     <span>Sistem berhasil diperbarui dengan logo baru! Logo telah diubah pada Sidebar dan Portal Login.</span>
                   </div>
                 )}
@@ -626,6 +711,118 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
 
                 <div className="mt-6 border-t border-gray-150 dark:border-slate-800 pt-4 text-[11px] text-gray-400 dark:text-gray-500 italic">
                   * Logo disimpan secara lokal pada peramban web dan/atau konfigurasi integrasi database Anda untuk kenyamanan kustomisasi instansi secara instan.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Custom Map Upload */}
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-md font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                <Globe className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <span>Pengaturan Peta NTB & Visualisasi Spasial Dashboard</span>
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                Unggah gambar peta Provinsi NTB kustom (misal infografis, peta topologi, atau layout administratif) 
+                untuk ditampilkan di Dashboard Utama menggantikan visualisasi tombol standar.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-2">
+              {/* Left Column: Drag & Drop Area for Map */}
+              <div className="md:col-span-7 space-y-4">
+                <div 
+                  onDragOver={handleDragOverMap}
+                  onDragLeave={handleDragLeaveMap}
+                  onDrop={handleDropMap}
+                  className={`
+                    border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer min-h-[220px] relative group
+                    ${isDraggingMap 
+                      ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20' 
+                      : 'border-gray-200 dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-600 bg-gray-50/50 dark:bg-slate-900/30'
+                    }
+                  `}
+                  onClick={() => document.getElementById('map-file-input')?.click()}
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <input 
+                    type="file" 
+                    id="map-file-input" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleMapFileChange}
+                  />
+                  <div className="p-3.5 bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm text-amber-600 dark:text-amber-400 mb-3 group-hover:scale-105 transition-transform">
+                    <Globe className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    Tarik dan lepaskan gambar peta di sini, atau <span className="text-amber-600 dark:text-amber-400 underline">cari berkas</span>
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+                    Mendukung berkas format PNG, JPG, JPEG, atau SVG.<br />
+                    Maksimal ukuran berkas: 1.5 Megabytes.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSaveMap}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-750 text-white shadow-md shadow-amber-500/10 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Simpan Peta Baru</span>
+                  </button>
+                  <button
+                    onClick={handleResetMap}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-500" />
+                    <span>Kembalikan Default</span>
+                  </button>
+                </div>
+
+                {mapSaveStatus === 'saved' && (
+                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 text-xs font-semibold animate-fade-in">
+                    <CheckCircle className="w-4.5 h-4.5" />
+                    <span>Peta kustom berhasil disimpan! Gambar peta baru kini akan menghiasi panel spasial di Dashboard utama.</span>
+                  </div>
+                )}
+                {mapSaveStatus === 'error' && (
+                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 text-xs font-semibold">
+                    <ShieldAlert className="w-4.5 h-4.5" />
+                    <span>Terjadi kesalahan saat menyimpan peta baru.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Visual Preview of Custom Map */}
+              <div className="md:col-span-5 bg-gray-50/50 dark:bg-slate-900/30 border border-gray-150 dark:border-slate-700/60 rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-4">
+                    Pratinjau Peta Unggahan
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-gray-200 dark:border-slate-700 flex flex-col items-center justify-center shadow-sm min-h-[160px] overflow-hidden">
+                      {mapBase64 ? (
+                        <img 
+                          src={mapBase64} 
+                          alt="Custom Map NTB Preview" 
+                          className="max-h-[140px] w-full object-contain rounded-lg"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="text-center p-4">
+                          <Globe className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                          <p className="text-[10px] text-gray-400">Peta interaktif bawaan aktif (Belum ada peta kustom yang diunggah).</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 border-t border-gray-150 dark:border-slate-800 pt-3 text-[11px] text-gray-400 dark:text-gray-500 italic">
+                  * Peta kustom disimpan secara aman di browser lokal Anda dan/atau disinkronkan ke Spreadsheet Anda.
                 </div>
               </div>
             </div>

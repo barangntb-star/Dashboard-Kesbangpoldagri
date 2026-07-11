@@ -138,4 +138,5 @@ export interface SystemConfig {
   spreadsheetUrl: string;
   driveFolderId: string;
   customLogo?: string;
+  customMap?: string;
 }

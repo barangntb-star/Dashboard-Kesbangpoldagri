@@ -229,6 +229,7 @@ export default function App() {
               konflik={konflik}
               penelitian={penelitian}
               programKegiatan={programKegiatan}
+              customMap={systemConfig.customMap}
             />
           )}
 

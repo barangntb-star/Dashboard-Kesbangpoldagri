@@ -18,10 +18,11 @@ interface DashboardOverviewProps {
   konflik: KonflikSosial[];
   penelitian: Penelitian[];
   programKegiatan: ProgramKegiatan[];
+  customMap?: string;
 }
 
 export default function DashboardOverview({
-  ormas, partai, wasbang, belaNegara, pentik, konflik, penelitian, programKegiatan
+  ormas, partai, wasbang, belaNegara, pentik, konflik, penelitian, programKegiatan, customMap
 }: DashboardOverviewProps) {
   const [selectedKabupaten, setSelectedKabupaten] = React.useState<string>('Seluruh NTB');
 
@@ -308,48 +309,22 @@ export default function DashboardOverview({
 
           {/* Map Area using clean, gorgeous SVG representations of Lombok & Sumbawa */}
           <div className="my-8 flex flex-col items-center justify-center">
-            <div className="w-full max-w-xl aspect-[16/7] relative bg-teal-50/20 dark:bg-slate-900/40 rounded-2xl p-4 border border-teal-100/30 overflow-hidden flex flex-col justify-between">
-              
-              {/* Regional selection button cards representing the two islands */}
-              <div className="flex justify-between items-start gap-4 h-full relative">
+            {customMap ? (
+              <div className="w-full max-w-xl relative flex flex-col items-center">
+                <div className="w-full bg-teal-50/20 dark:bg-slate-900/40 rounded-2xl p-4 border border-teal-100/30 overflow-hidden flex items-center justify-center min-h-[220px]">
+                  <img src={customMap} alt="Peta NTB Kustom" className="max-h-[240px] w-full object-contain rounded-lg shadow-sm" />
+                </div>
                 
-                {/* Pulau Lombok Section */}
-                <div className="w-2/5 h-full relative flex flex-col justify-end">
-                  <div className="text-center font-bold text-[10px] tracking-wider text-teal-600/70 dark:text-teal-400/50 uppercase mb-2">PULAU LOMBOK</div>
-                  
-                  {/* Grid representing Lombok districts */}
-                  <div className="grid grid-cols-2 gap-1.5 relative z-10">
+                {/* Kabupaten filter selection when custom map is loaded */}
+                <div className="mt-5 w-full bg-gray-50 dark:bg-slate-900/40 p-4 rounded-xl border border-gray-150 dark:border-slate-800">
+                  <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-2.5 text-center">Pilih Wilayah Filter Statistik:</span>
+                  <div className="flex flex-wrap justify-center gap-1.5">
                     {[
                       { name: 'Kota Mataram', label: 'Mataram' },
                       { name: 'Lombok Barat', label: 'Lombok Barat' },
                       { name: 'Lombok Tengah', label: 'Lombok Tengah' },
                       { name: 'Lombok Timur', label: 'Lombok Timur' },
-                      { name: 'Lombok Utara', label: 'Lombok Utara' }
-                    ].map(kab => (
-                      <button
-                        key={kab.name}
-                        onClick={() => setSelectedKabupaten(kab.name)}
-                        className={`px-2 py-2.5 rounded-lg text-[10px] font-bold text-center border transition-all truncate shadow-sm ${
-                          selectedKabupaten === kab.name
-                            ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-teal-950 border-amber-600'
-                            : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-slate-700 hover:bg-teal-50 dark:hover:bg-teal-950/20'
-                        }`}
-                      >
-                        {kab.label}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Decorative simple Lombok outline block */}
-                  <div className="absolute inset-0 bg-teal-600/5 dark:bg-teal-400/5 rounded-xl -z-0 pointer-events-none"></div>
-                </div>
-
-                {/* Pulau Sumbawa Section */}
-                <div className="w-3/5 h-full relative flex flex-col justify-end">
-                  <div className="text-center font-bold text-[10px] tracking-wider text-teal-600/70 dark:text-teal-400/50 uppercase mb-2">PULAU SUMBAWA</div>
-                  
-                  {/* Grid representing Sumbawa districts */}
-                  <div className="grid grid-cols-3 gap-1.5 relative z-10">
-                    {[
+                      { name: 'Lombok Utara', label: 'Lombok Utara' },
                       { name: 'Sumbawa Barat', label: 'Sumbawa Barat' },
                       { name: 'Sumbawa', label: 'Sumbawa' },
                       { name: 'Dompu', label: 'Dompu' },
@@ -359,7 +334,7 @@ export default function DashboardOverview({
                       <button
                         key={kab.name}
                         onClick={() => setSelectedKabupaten(kab.name)}
-                        className={`px-1 py-2.5 rounded-lg text-[10px] font-bold text-center border transition-all truncate shadow-sm ${
+                        className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold text-center border transition-all truncate shadow-sm cursor-pointer ${
                           selectedKabupaten === kab.name
                             ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-teal-950 border-amber-600'
                             : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-slate-700 hover:bg-teal-50 dark:hover:bg-teal-950/20'
@@ -368,25 +343,100 @@ export default function DashboardOverview({
                         {kab.label}
                       </button>
                     ))}
+                    <button 
+                      onClick={() => setSelectedKabupaten('Seluruh NTB')}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold border uppercase tracking-wider transition-all cursor-pointer ${
+                        selectedKabupaten === 'Seluruh NTB'
+                          ? 'bg-teal-600 text-white border-teal-500 shadow-sm'
+                          : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700'
+                      }`}
+                    >
+                      Seluruh NTB
+                    </button>
                   </div>
-                  {/* Decorative simple Sumbawa outline block */}
-                  <div className="absolute inset-0 bg-emerald-600/5 dark:bg-emerald-400/5 rounded-xl -z-0 pointer-events-none"></div>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full max-w-xl aspect-[16/7] relative bg-teal-50/20 dark:bg-slate-900/40 rounded-2xl p-4 border border-teal-100/30 overflow-hidden flex flex-col justify-between">
+                
+                {/* Regional selection button cards representing the two islands */}
+                <div className="flex justify-between items-start gap-4 h-full relative">
+                  
+                  {/* Pulau Lombok Section */}
+                  <div className="w-2/5 h-full relative flex flex-col justify-end">
+                    <div className="text-center font-bold text-[10px] tracking-wider text-teal-600/70 dark:text-teal-400/50 uppercase mb-2">PULAU LOMBOK</div>
+                    
+                    {/* Grid representing Lombok districts */}
+                    <div className="grid grid-cols-2 gap-1.5 relative z-10">
+                      {[
+                        { name: 'Kota Mataram', label: 'Mataram' },
+                        { name: 'Lombok Barat', label: 'Lombok Barat' },
+                        { name: 'Lombok Tengah', label: 'Lombok Tengah' },
+                        { name: 'Lombok Timur', label: 'Lombok Timur' },
+                        { name: 'Lombok Utara', label: 'Lombok Utara' }
+                      ].map(kab => (
+                        <button
+                          key={kab.name}
+                          onClick={() => setSelectedKabupaten(kab.name)}
+                          className={`px-2 py-2.5 rounded-lg text-[10px] font-bold text-center border transition-all truncate shadow-sm cursor-pointer ${
+                            selectedKabupaten === kab.name
+                              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-teal-950 border-amber-600'
+                              : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-slate-700 hover:bg-teal-50 dark:hover:bg-teal-950/20'
+                          }`}
+                        >
+                          {kab.label}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Decorative simple Lombok outline block */}
+                    <div className="absolute inset-0 bg-teal-600/5 dark:bg-teal-400/5 rounded-xl -z-0 pointer-events-none"></div>
+                  </div>
+
+                  {/* Pulau Sumbawa Section */}
+                  <div className="w-3/5 h-full relative flex flex-col justify-end">
+                    <div className="text-center font-bold text-[10px] tracking-wider text-teal-600/70 dark:text-teal-400/50 uppercase mb-2">PULAU SUMBAWA</div>
+                    
+                    {/* Grid representing Sumbawa districts */}
+                    <div className="grid grid-cols-3 gap-1.5 relative z-10">
+                      {[
+                        { name: 'Sumbawa Barat', label: 'Sumbawa Barat' },
+                        { name: 'Sumbawa', label: 'Sumbawa' },
+                        { name: 'Dompu', label: 'Dompu' },
+                        { name: 'Bima', label: 'Bima' },
+                        { name: 'Kota Bima', label: 'Kota Bima' }
+                      ].map(kab => (
+                        <button
+                          key={kab.name}
+                          onClick={() => setSelectedKabupaten(kab.name)}
+                          className={`px-1 py-2.5 rounded-lg text-[10px] font-bold text-center border transition-all truncate shadow-sm cursor-pointer ${
+                            selectedKabupaten === kab.name
+                              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-teal-950 border-amber-600'
+                              : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-slate-700 hover:bg-teal-50 dark:hover:bg-teal-950/20'
+                          }`}
+                        >
+                          {kab.label}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Decorative simple Sumbawa outline block */}
+                    <div className="absolute inset-0 bg-emerald-600/5 dark:bg-emerald-400/5 rounded-xl -z-0 pointer-events-none"></div>
+                  </div>
+
                 </div>
 
+                {/* Reset button to show all province statistics */}
+                <button 
+                  onClick={() => setSelectedKabupaten('Seluruh NTB')}
+                  className={`absolute top-2 right-2 px-3 py-1 rounded-full text-[10px] font-extrabold border uppercase tracking-wider transition-all cursor-pointer ${
+                    selectedKabupaten === 'Seluruh NTB'
+                      ? 'bg-teal-600 text-white border-teal-500 shadow-sm'
+                      : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700'
+                  }`}
+                >
+                  Lihat Seluruh NTB
+                </button>
               </div>
-
-              {/* Reset button to show all province statistics */}
-              <button 
-                onClick={() => setSelectedKabupaten('Seluruh NTB')}
-                className={`absolute top-2 right-2 px-3 py-1 rounded-full text-[10px] font-extrabold border uppercase tracking-wider transition-all ${
-                  selectedKabupaten === 'Seluruh NTB'
-                    ? 'bg-teal-600 text-white border-teal-500 shadow-sm'
-                    : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700'
-                }`}
-              >
-                Lihat Seluruh NTB
-              </button>
-            </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 justify-center text-xs text-gray-400">
