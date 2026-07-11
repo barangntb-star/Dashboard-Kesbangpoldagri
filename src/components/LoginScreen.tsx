@@ -132,24 +132,7 @@ export default function LoginScreen({ onLoginSuccess, onLoginAttempt }: LoginScr
           </button>
         </form>
 
-        {/* Credentials helper cheat sheet */}
-        <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100/50 dark:border-slate-800/40">
-          <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-widest block mb-2">Akses Demo / Akun Default:</span>
-          <div className="space-y-1 text-[11px] text-gray-500 dark:text-gray-400">
-            <div className="flex justify-between border-b border-gray-100/30 pb-1.5">
-              <span>👤 <strong>Administrator</strong>: admin</span>
-              <span className="font-mono text-teal-600">admin123</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-100/30 py-1.5">
-              <span>👤 <strong>Operator Bidang</strong>: operator</span>
-              <span className="font-mono text-teal-600">operator123</span>
-            </div>
-            <div className="flex justify-between pt-1.5">
-              <span>👤 <strong>Pimpinan NTB</strong>: pimpinan</span>
-              <span className="font-mono text-teal-600">pimpinan123</span>
-            </div>
-          </div>
-        </div>
+
 
         {/* Agency credentials footnote */}
         <div className="text-center text-[10px] text-gray-400">
