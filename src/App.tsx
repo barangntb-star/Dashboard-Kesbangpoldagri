@@ -41,6 +41,16 @@ export default function App() {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<any | null>(null);
 
+  // Connection Error fallback state
+  const [connectionError, setConnectionError] = React.useState<{
+    sheetName: string;
+    action: 'create' | 'update' | 'delete';
+    data?: any;
+    id?: string;
+    fileObj?: { base64: string; name: string; type: string };
+    errorMessage: string;
+  } | null>(null);
+
   // Load active session and fetch seed database on load
   React.useEffect(() => {
     const activeUser = apiService.getCurrentUser();
@@ -118,16 +128,51 @@ export default function App() {
       if (editingItem) {
         // Edit Action
         const res = await apiService.update(sheetName, data, fileObj);
-        if (!res.success) alert(res.error || 'Gagal mengubah data.');
+        if (!res.success) {
+          if (res.error?.includes('Failed to fetch') || res.error?.includes('Koneksi API') || res.error?.includes('failed to fetch')) {
+            setConnectionError({
+              sheetName,
+              action: 'update',
+              data,
+              fileObj,
+              errorMessage: res.error
+            });
+          } else {
+            alert(res.error || 'Gagal mengubah data.');
+          }
+        }
       } else {
         // Create Action
         const res = await apiService.create(sheetName, data, fileObj);
-        if (!res.success) alert(res.error || 'Gagal menambahkan data.');
+        if (!res.success) {
+          if (res.error?.includes('Failed to fetch') || res.error?.includes('Koneksi API') || res.error?.includes('failed to fetch')) {
+            setConnectionError({
+              sheetName,
+              action: 'create',
+              data,
+              fileObj,
+              errorMessage: res.error
+            });
+          } else {
+            alert(res.error || 'Gagal menambahkan data.');
+          }
+        }
       }
       // Reactive state updating without page reload
       await syncAllData();
     } catch (err: any) {
-      alert('Terjadi kesalahan penyimpanan: ' + err.message);
+      const errMsg = err.message || '';
+      if (errMsg.includes('Failed to fetch') || errMsg.includes('Koneksi') || errMsg.includes('failed to fetch')) {
+        setConnectionError({
+          sheetName,
+          action: editingItem ? 'update' : 'create',
+          data,
+          fileObj,
+          errorMessage: 'Terjadi kesalahan jaringan: ' + errMsg
+        });
+      } else {
+        alert('Terjadi kesalahan penyimpanan: ' + errMsg);
+      }
     } finally {
       setIsSyncing(false);
       setEditingItem(null);
@@ -157,10 +202,77 @@ export default function App() {
       if (res.success) {
         await syncAllData();
       } else {
-        alert(res.error || 'Gagal menghapus data.');
+        if (res.error?.includes('Failed to fetch') || res.error?.includes('Koneksi API') || res.error?.includes('failed to fetch')) {
+          setConnectionError({
+            sheetName,
+            action: 'delete',
+            id,
+            errorMessage: res.error
+          });
+        } else {
+          alert(res.error || 'Gagal menghapus data.');
+        }
       }
     } catch (err: any) {
-      alert('Terjadi kesalahan penghapusan: ' + err.message);
+      const errMsg = err.message || '';
+      if (errMsg.includes('Failed to fetch') || errMsg.includes('Koneksi') || errMsg.includes('failed to fetch')) {
+        setConnectionError({
+          sheetName,
+          action: 'delete',
+          id,
+          errorMessage: 'Terjadi kesalahan jaringan: ' + errMsg
+        });
+      } else {
+        alert('Terjadi kesalahan penghapusan: ' + errMsg);
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleFallbackToOffline = async () => {
+    if (!connectionError) return;
+
+    // 1. Switch config to Mock / Offline mode
+    const currentConfig = apiService.getConfig();
+    const newConfig = { ...currentConfig, useMock: true };
+    apiService.saveConfig(newConfig);
+    setSystemConfig(newConfig);
+
+    // 2. Perform the action locally
+    const { sheetName, action, data, id, fileObj } = connectionError;
+    setIsSyncing(true);
+
+    try {
+      if (action === 'create') {
+        const res = await apiService.create(sheetName, data, fileObj);
+        if (res.success) {
+          alert('Sistem berhasil dialihkan ke Mode Luring (Lokal) dan data berhasil disimpan!');
+        } else {
+          alert('Gagal menyimpan data secara lokal: ' + res.error);
+        }
+      } else if (action === 'update') {
+        const res = await apiService.update(sheetName, data, fileObj);
+        if (res.success) {
+          alert('Sistem berhasil dialihkan ke Mode Luring (Lokal) dan data berhasil diubah!');
+        } else {
+          alert('Gagal mengubah data secara lokal: ' + res.error);
+        }
+      } else if (action === 'delete' && id) {
+        const res = await apiService.delete(sheetName, id);
+        if (res.success) {
+          alert('Sistem berhasil dialihkan ke Mode Luring (Lokal) dan data berhasil dihapus!');
+        } else {
+          alert('Gagal menghapus data secara lokal: ' + res.error);
+        }
+      }
+      
+      // Clear connection error state
+      setConnectionError(null);
+      // Re-fetch all cached data (which will now correctly load the local localStorage)
+      await syncAllData();
+    } catch (err: any) {
+      alert('Terjadi kesalahan saat menyimpan lokal: ' + err.message);
     } finally {
       setIsSyncing(false);
     }
@@ -510,6 +622,61 @@ export default function App() {
           }}
           onSave={handleSaveItem}
         />
+      )}
+
+      {/* 4. Connection Error Fallback Modal */}
+      {connectionError && (
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fadeIn">
+          <div className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 dark:border-rose-950/40 text-left space-y-5">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-2xl">
+                {/* Visual warning icon */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <div className="space-y-1 flex-1">
+                <h3 className="text-lg font-extrabold text-gray-900 dark:text-white leading-tight">
+                  Koneksi API Google Sheets Gagal
+                </h3>
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-mono mt-0.5 break-all">
+                  Detail: {connectionError.errorMessage || 'Failed to fetch'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl text-xs space-y-2.5 text-gray-700 dark:text-gray-300">
+              <p className="font-bold text-amber-800 dark:text-amber-400">
+                💡 Mengapa ini terjadi?
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400 leading-relaxed text-[11px]">
+                <li>URL Web App di pengaturan sistem tidak valid atau tidak aktif.</li>
+                <li>Pengaturan hak akses Google Web App belum diatur ke <strong>"Anyone" (Siapa saja)</strong>.</li>
+                <li>CORS memblokir permintaan dari domain preview ini di peramban Anda.</li>
+              </ul>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 italic">
+                Anda tidak perlu khawatir kehilangan data. Anda bisa mengalihkan sistem ke <strong>Mode Luring (Database Lokal)</strong> sekarang untuk menyimpan data ini secara lokal terlebih dahulu.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={handleFallbackToOffline}
+                className="flex-1 py-3 px-4 bg-amber-600 hover:bg-amber-700 active:scale-98 text-white rounded-xl text-xs font-bold transition-all text-center cursor-pointer shadow-md shadow-amber-600/10"
+              >
+                Simpan Secara Lokal & Aktifkan Luring
+              </button>
+              <button
+                type="button"
+                onClick={() => setConnectionError(null)}
+                className="py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-98 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition-all text-center cursor-pointer border border-gray-200 dark:border-slate-700"
+              >
+                Batal (Periksa Pengaturan)
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

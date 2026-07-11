@@ -15,12 +15,16 @@ export default function LoginScreen({ onLoginSuccess, onLoginAttempt }: LoginScr
   const [isLoading, setIsLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
   const [customLogo, setCustomLogo] = React.useState('');
+  const [isOfflineMode, setIsOfflineMode] = React.useState(true);
 
   React.useEffect(() => {
     try {
       const config = apiService.getConfig();
-      if (config && config.customLogo) {
-        setCustomLogo(config.customLogo);
+      if (config) {
+        if (config.customLogo) {
+          setCustomLogo(config.customLogo);
+        }
+        setIsOfflineMode(!!config.useMock);
       }
     } catch (e) {
       console.error('Error loading custom logo for login screen:', e);
@@ -74,6 +78,37 @@ export default function LoginScreen({ onLoginSuccess, onLoginAttempt }: LoginScr
           </div>
           <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">PORTAL KESBANGPOLDAGRI</h2>
           <p className="text-[11px] text-teal-600 dark:text-teal-400 font-bold uppercase tracking-widest mt-1">Provinsi Nusa Tenggara Barat</p>
+        </div>
+
+        {/* Connection Mode Selector/Indicator */}
+        <div className="p-3 bg-teal-50/20 dark:bg-slate-800/40 rounded-xl border border-teal-100/20 dark:border-slate-800/60 flex items-center justify-between gap-3 text-xs">
+          <div className="flex flex-col">
+            <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-widest">Koneksi Database</span>
+            <span className="font-bold text-gray-700 dark:text-gray-200">
+              {isOfflineMode ? '🔴 Mode Luring (Lokal)' : '🟢 Mode Online (Apps Script)'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                const currentConfig = apiService.getConfig();
+                const nextVal = !currentConfig.useMock;
+                apiService.saveConfig({
+                  ...currentConfig,
+                  useMock: nextVal
+                });
+                setIsOfflineMode(nextVal);
+                alert(`Berhasil beralih ke ${nextVal ? 'Mode Luring (Lokal)' : 'Mode Online (Google Apps Script)'}! Halaman akan dimuat ulang.`);
+                window.location.reload();
+              } catch (err) {
+                alert('Gagal mengubah mode koneksi.');
+              }
+            }}
+            className="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-lg text-[10px] font-bold cursor-pointer transition-colors border border-gray-200 dark:border-slate-700 active:scale-95 transition-all"
+          >
+            Aktifkan {isOfflineMode ? 'Online' : 'Luring'}
+          </button>
         </div>
 
         {/* Credentials Form */}
