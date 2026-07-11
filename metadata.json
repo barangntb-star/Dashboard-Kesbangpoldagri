@@ -1,0 +1,6 @@
+{
+  "name": "Dashboard Kesbangpoldagri NTB",
+  "description": "Aplikasi dashboard terintegrasi untuk Badan Kesatuan Bangsa dan Politik Dalam Negeri Provinsi Nusa Tenggara Barat",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
