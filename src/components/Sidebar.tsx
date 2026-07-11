@@ -12,9 +12,10 @@ interface SidebarProps {
   userRole: UserRole;
   userName: string;
   onLogout: () => void;
+  customLogo?: string;
 }
 
-export default function Sidebar({ currentTab, setCurrentTab, userRole, userName, onLogout }: SidebarProps) {
+export default function Sidebar({ currentTab, setCurrentTab, userRole, userName, onLogout, customLogo }: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const menuItems = [
@@ -72,7 +73,7 @@ export default function Sidebar({ currentTab, setCurrentTab, userRole, userName,
           <div className="w-16 h-16 mb-3 rounded-2xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-emerald-500 p-0.5 shadow-md flex items-center justify-center">
             <div className="w-full h-full bg-teal-950 rounded-2xl flex items-center justify-center overflow-hidden">
               <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/0/07/Coat_of_arms_of_West_Nusa_Tenggara.svg" 
+                src={customLogo || "https://upload.wikimedia.org/wikipedia/commons/0/07/Coat_of_arms_of_West_Nusa_Tenggara.svg"} 
                 alt="Logo NTB" 
                 className="w-10 h-10 object-contain p-0.5"
                 referrerPolicy="no-referrer"

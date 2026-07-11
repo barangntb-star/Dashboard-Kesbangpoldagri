@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck, User, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { UserRole } from '../types';
+import { apiService } from '../utils/apiService';
 
 interface LoginScreenProps {
   onLoginSuccess: (username: string, role: UserRole, nama: string) => void;
@@ -13,6 +14,18 @@ export default function LoginScreen({ onLoginSuccess, onLoginAttempt }: LoginScr
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
+  const [customLogo, setCustomLogo] = React.useState('');
+
+  React.useEffect(() => {
+    try {
+      const config = apiService.getConfig();
+      if (config && config.customLogo) {
+        setCustomLogo(config.customLogo);
+      }
+    } catch (e) {
+      console.error('Error loading custom logo for login screen:', e);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +65,7 @@ export default function LoginScreen({ onLoginSuccess, onLoginAttempt }: LoginScr
           <div className="w-20 h-20 mx-auto mb-4 rounded-3xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-emerald-500 p-0.5 shadow-xl flex items-center justify-center">
             <div className="w-full h-full bg-teal-950 rounded-3xl flex items-center justify-center overflow-hidden">
               <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/0/07/Coat_of_arms_of_West_Nusa_Tenggara.svg" 
+                src={customLogo || "https://upload.wikimedia.org/wikipedia/commons/0/07/Coat_of_arms_of_West_Nusa_Tenggara.svg"} 
                 alt="Lambang NTB" 
                 className="w-12 h-12 object-contain p-0.5"
                 referrerPolicy="no-referrer"

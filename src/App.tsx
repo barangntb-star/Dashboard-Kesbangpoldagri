@@ -194,6 +194,7 @@ export default function App() {
         userRole={currentUser.role} 
         userName={currentUser.nama}
         onLogout={handleLogout}
+        customLogo={systemConfig.customLogo}
       />
 
       {/* 2. Main Content Wrapper */}

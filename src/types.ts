@@ -137,4 +137,5 @@ export interface SystemConfig {
   useMock: boolean;
   spreadsheetUrl: string;
   driveFolderId: string;
+  customLogo?: string;
 }

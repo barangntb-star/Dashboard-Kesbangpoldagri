@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Database, RefreshCw, Key, ShieldAlert, CheckCircle, 
-  Trash2, UserPlus, Server, Copy, HelpCircle, Save 
+  Trash2, UserPlus, Server, Copy, HelpCircle, Save, Image, Upload
 } from 'lucide-react';
 import { SystemConfig, User, UserRole } from '../types';
 import { apiService } from '../utils/apiService';
@@ -15,7 +15,7 @@ interface SystemSettingsProps {
 }
 
 export default function SystemSettings({ config, onConfigSave, users, onUsersUpdate }: SystemSettingsProps) {
-  const [activeSubTab, setActiveSubTab] = React.useState<'database' | 'user' | 'panduan'>('database');
+  const [activeSubTab, setActiveSubTab] = React.useState<'database' | 'user' | 'logo' | 'panduan'>('database');
   
   // Database state
   const [apiUrl, setApiUrl] = React.useState(config.apiUrl);
@@ -33,6 +33,88 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
   const [newRole, setNewRole] = React.useState<UserRole>('Operator Bidang');
   const [newBidang, setNewBidang] = React.useState('Ormas');
   const [newPassword, setNewPassword] = React.useState('operator123');
+
+  // Logo state
+  const [logoBase64, setLogoBase64] = React.useState(config.customLogo || '');
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [logoSaveStatus, setLogoSaveStatus] = React.useState<'idle' | 'saved' | 'error'>('idle');
+
+  React.useEffect(() => {
+    if (config.customLogo !== undefined) {
+      setLogoBase64(config.customLogo);
+    }
+  }, [config.customLogo]);
+
+  const handleLogoFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('File harus berupa format gambar (PNG, JPG, JPEG, atau SVG)!');
+      return;
+    }
+    // Check file size (keep it reasonable, e.g., under 1.5MB for localStorage)
+    if (file.size > 1.5 * 1024 * 1024) {
+      alert('Ukuran berkas logo terlalu besar (maksimal 1.5 MB agar tersimpan dengan baik di sistem local!).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setLogoBase64(base64);
+      setLogoSaveStatus('idle');
+    };
+    reader.onerror = () => {
+      alert('Gagal membaca file gambar logo.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleLogoFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleLogoFile(e.target.files[0]);
+    }
+  };
+
+  const handleSaveLogo = () => {
+    try {
+      onConfigSave({
+        ...config,
+        customLogo: logoBase64
+      });
+      setLogoSaveStatus('saved');
+      setTimeout(() => setLogoSaveStatus('idle'), 3000);
+    } catch (err) {
+      setLogoSaveStatus('error');
+    }
+  };
+
+  const handleResetLogo = () => {
+    if (window.confirm('Apakah Anda yakin ingin mengembalikan logo instansi ke default (Lambang Provinsi NTB)?')) {
+      setLogoBase64('');
+      onConfigSave({
+        ...config,
+        customLogo: ''
+      });
+      setLogoSaveStatus('saved');
+      setTimeout(() => setLogoSaveStatus('idle'), 3000);
+    }
+  };
 
   const handleConfigSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +208,7 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
         {[
           { id: 'database', label: 'Integrasi Database', icon: Server },
           { id: 'user', label: 'Pengelolaan Pengguna', icon: Key },
+          { id: 'logo', label: 'Import Logo', icon: Image },
           { id: 'panduan', label: 'Panduan Pemasangan', icon: HelpCircle }
         ].map(tab => {
           const IconComp = tab.icon;
@@ -394,6 +477,156 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Panel: Import Logo */}
+      {activeSubTab === 'logo' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-md font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                <Image className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                <span>Pengaturan Logo & Identitas Visual Portal</span>
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                Sesuaikan identitas logo instansi atau logo pemerintah daerah yang ditampilkan pada Halaman Utama, 
+                Sidebar Menu, dan Halaman Login Portal Kesbangpoldagri Provinsi NTB.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-2">
+              {/* Left Column: Drag & Drop Area */}
+              <div className="md:col-span-7 space-y-4">
+                <div 
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`
+                    border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer min-h-[220px] relative group
+                    ${isDragging 
+                      ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-950/20' 
+                      : 'border-gray-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-600 bg-gray-50/50 dark:bg-slate-900/30'
+                    }
+                  `}
+                  onClick={() => document.getElementById('logo-file-input')?.click()}
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <input 
+                    type="file" 
+                    id="logo-file-input" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleFileChange}
+                  />
+                  <div className="p-3.5 bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm text-teal-600 dark:text-teal-400 mb-3 group-hover:scale-105 transition-transform">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    Tarik dan lepaskan gambar di sini, atau <span className="text-teal-600 dark:text-teal-400 underline">cari berkas</span>
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+                    Mendukung berkas format PNG, JPG, JPEG, atau SVG.<br />
+                    Maksimal ukuran berkas: 1.5 Megabytes.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSaveLogo}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-md shadow-teal-500/10 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Simpan Logo Baru</span>
+                  </button>
+                  <button
+                    onClick={handleResetLogo}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-500" />
+                    <span>Kembalikan Default</span>
+                  </button>
+                </div>
+
+                {logoSaveStatus === 'saved' && (
+                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 text-xs font-semibold animate-fade-in">
+                    <CheckCircle className="w-4.5 h-4.5" />
+                    <span>Sistem berhasil diperbarui dengan logo baru! Logo telah diubah pada Sidebar dan Portal Login.</span>
+                  </div>
+                )}
+                {logoSaveStatus === 'error' && (
+                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 text-xs font-semibold">
+                    <ShieldAlert className="w-4.5 h-4.5" />
+                    <span>Terjadi kesalahan saat menyimpan logo baru.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Visual Preview Mockups */}
+              <div className="md:col-span-5 bg-gray-50/50 dark:bg-slate-900/30 border border-gray-150 dark:border-slate-700/60 rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-4">
+                    Pratinjau Tampilan Logo
+                  </h4>
+                  <div className="space-y-6">
+                    {/* Preview 1: Sidebar Version */}
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">
+                        Tampilan di Sidebar Menu (Samping)
+                      </span>
+                      <div className="bg-gradient-to-b from-teal-950 to-teal-900 rounded-2xl p-4 flex items-center gap-3.5 border border-teal-800/40 w-full max-w-[280px]">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-emerald-500 p-0.5 shadow-md flex items-center justify-center flex-shrink-0">
+                          <div className="w-full h-full bg-teal-950 rounded-xl flex items-center justify-center overflow-hidden">
+                            <img 
+                              src={logoBase64 || "https://upload.wikimedia.org/wikipedia/commons/0/07/Coat_of_arms_of_West_Nusa_Tenggara.svg"} 
+                              alt="Logo Sidebar" 
+                              className="w-8 h-8 object-contain p-0.5"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-col">
+                          <h1 className="font-bold text-amber-300 text-xs leading-none">
+                            KESBANGPOLDAGRI
+                          </h1>
+                          <p className="text-[9px] text-teal-200 uppercase tracking-widest font-semibold mt-0.5">
+                            Provinsi NTB
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preview 2: Login Version */}
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">
+                        Tampilan di Halaman Login Utama
+                      </span>
+                      <div className="bg-white dark:bg-slate-800 rounded-2xl p-4.5 border border-gray-200 dark:border-slate-700 flex items-center gap-4 shadow-sm max-w-[280px]">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-emerald-500 p-0.5 shadow-md flex items-center justify-center flex-shrink-0">
+                          <div className="w-full h-full bg-teal-950 rounded-2xl flex items-center justify-center overflow-hidden">
+                            <img 
+                              src={logoBase64 || "https://upload.wikimedia.org/wikipedia/commons/0/07/Coat_of_arms_of_West_Nusa_Tenggara.svg"} 
+                              alt="Logo Login" 
+                              className="w-10 h-10 object-contain p-0.5"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-extrabold text-teal-950 dark:text-white truncate">Sistem Portal Login</p>
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight truncate">Badan Kesbangpoldagri NTB</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 border-t border-gray-150 dark:border-slate-800 pt-4 text-[11px] text-gray-400 dark:text-gray-500 italic">
+                  * Logo disimpan secara lokal pada peramban web dan/atau konfigurasi integrasi database Anda untuk kenyamanan kustomisasi instansi secara instan.
+                </div>
               </div>
             </div>
           </div>
