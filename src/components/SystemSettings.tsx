@@ -200,10 +200,19 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
 
   const handleConfigSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanApiUrl = apiUrl.trim();
+    const cleanSpreadsheetUrl = spreadsheetUrl.trim();
+    const cleanDriveFolderId = driveFolderId.trim();
+
+    // Update state so the UI reflects the trimmed values
+    setApiUrl(cleanApiUrl);
+    setSpreadsheetUrl(cleanSpreadsheetUrl);
+    setDriveFolderId(cleanDriveFolderId);
+
     onConfigSave({
-      apiUrl,
-      spreadsheetUrl,
-      driveFolderId,
+      apiUrl: cleanApiUrl,
+      spreadsheetUrl: cleanSpreadsheetUrl,
+      driveFolderId: cleanDriveFolderId,
       useMock,
       customLogo: logoBase64,
       customMap: mapBase64
@@ -212,13 +221,16 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
   };
 
   const handleTestConnection = async () => {
-    if (!apiUrl) {
+    const cleanApiUrl = apiUrl.trim();
+    setApiUrl(cleanApiUrl);
+    
+    if (!cleanApiUrl) {
       setTestResult({ success: false, msg: 'Masukkan URL Google Apps Script Web API terlebih dahulu.' });
       return;
     }
     setIsTesting(true);
     setTestResult(null);
-    const res = await apiService.testConnection(apiUrl);
+    const res = await apiService.testConnection(cleanApiUrl);
     setIsTesting(false);
     if (res.success) {
       setTestResult({ success: true, msg: 'SINKRONISASI BERHASIL! Aplikasi terhubung dengan Google Sheets.' });

@@ -95,10 +95,12 @@ export const apiService = {
     // Live Apps Script Connection
     if (!config.useMock && config.apiUrl) {
       try {
-        const response = await fetch(config.apiUrl, {
+        const cleanUrl = config.apiUrl.trim();
+        // Use text/plain to bypass CORS preflight OPTIONS request
+        const response = await fetch(cleanUrl, {
           method: 'POST',
           mode: 'cors',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'login', username, password })
         });
         const resJson = await response.json();
@@ -131,14 +133,27 @@ export const apiService = {
 
   async testConnection(apiUrl: string): Promise<{ success: boolean; error?: string }> {
     try {
+      const cleanUrl = apiUrl.trim();
       // GAS Web Apps return a CORS preflight or standard json error when actions aren't met
       // But fetching with standard GET should at least reply or fail connection
-      const response = await fetch(`${apiUrl}?action=read&sheet=Users`, {
+      const response = await fetch(`${cleanUrl}?action=read&sheet=Users`, {
         method: 'GET',
         mode: 'cors'
       });
-      const data = await response.json();
-      if (data && (data.success !== undefined)) {
+      
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        // If it returns the active/running text or something similar, it indicates the URL is valid and reached!
+        if (text.includes("aktif") || text.includes("Google Apps Script") || text.includes("Web App")) {
+          return { success: true };
+        }
+        throw new Error("Respons bukan format JSON: " + text.substring(0, 150));
+      }
+
+      if (data && (data.success !== undefined || Array.isArray(data.data))) {
         return { success: true };
       }
       return { success: false, error: 'Respons format tidak sesuai.' };
@@ -153,7 +168,8 @@ export const apiService = {
 
     if (!config.useMock && config.apiUrl) {
       try {
-        const response = await fetch(`${config.apiUrl}?action=read&sheet=${sheetName}`, {
+        const cleanUrl = config.apiUrl.trim();
+        const response = await fetch(`${cleanUrl}?action=read&sheet=${sheetName}`, {
           method: 'GET',
           mode: 'cors'
         });
@@ -184,10 +200,12 @@ export const apiService = {
 
     if (!config.useMock && config.apiUrl) {
       try {
-        const response = await fetch(config.apiUrl, {
+        const cleanUrl = config.apiUrl.trim();
+        // Use text/plain to bypass CORS preflight OPTIONS request
+        const response = await fetch(cleanUrl, {
           method: 'POST',
           mode: 'cors',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ 
             action: 'create', 
             sheet: sheetName, 
@@ -237,10 +255,12 @@ export const apiService = {
 
     if (!config.useMock && config.apiUrl) {
       try {
-        const response = await fetch(config.apiUrl, {
+        const cleanUrl = config.apiUrl.trim();
+        // Use text/plain to bypass CORS preflight OPTIONS request
+        const response = await fetch(cleanUrl, {
           method: 'POST',
           mode: 'cors',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ 
             action: 'update', 
             sheet: sheetName, 
@@ -285,10 +305,12 @@ export const apiService = {
 
     if (!config.useMock && config.apiUrl) {
       try {
-        const response = await fetch(config.apiUrl, {
+        const cleanUrl = config.apiUrl.trim();
+        // Use text/plain to bypass CORS preflight OPTIONS request
+        const response = await fetch(cleanUrl, {
           method: 'POST',
           mode: 'cors',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'delete', sheet: sheetName, id })
         });
         const resJson = await response.json();
@@ -329,7 +351,8 @@ export const apiService = {
 
     if (!config.useMock && config.apiUrl) {
       try {
-        const response = await fetch(`${config.apiUrl}?action=dashboard`, {
+        const cleanUrl = config.apiUrl.trim();
+        const response = await fetch(`${cleanUrl}?action=dashboard`, {
           method: 'GET',
           mode: 'cors'
         });
