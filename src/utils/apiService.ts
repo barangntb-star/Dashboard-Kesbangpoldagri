@@ -118,11 +118,10 @@ export const apiService = {
 
     // Local / Offline authentication (Fallback or standard mock mode)
     const users: User[] = JSON.parse(localStorage.getItem('Users') || '[]');
-    // For simplicity, we compare with our pre-set passwords
-    // admin -> admin123, operator -> operator123, pimpinan -> pimpinan123
     const matchedUser = users.find(u => u.username === username);
     if (matchedUser) {
-      const correctPassword = username === 'admin' ? 'admin123' : username === 'operator' ? 'operator123' : 'pimpinan123';
+      const defaultPassword = username === 'admin' ? 'admin123' : username === 'operator' ? 'operator123' : 'pimpinan123';
+      const correctPassword = matchedUser.password || defaultPassword;
       if (password === correctPassword) {
         this.setCurrentUser(matchedUser);
         return { success: true, user: matchedUser };

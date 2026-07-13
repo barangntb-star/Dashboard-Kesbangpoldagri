@@ -3,6 +3,7 @@ export type UserRole = 'Administrator' | 'Operator Bidang' | 'Pimpinan';
 export interface User {
   id: string;
   username: string;
+  password?: string;
   nama: string;
   role: UserRole;
   bidang?: string;

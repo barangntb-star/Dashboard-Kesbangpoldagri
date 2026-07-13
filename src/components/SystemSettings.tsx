@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   Database, RefreshCw, Key, ShieldAlert, CheckCircle, 
-  Trash2, UserPlus, Server, Copy, HelpCircle, Save, Image, Upload, Globe
+  Trash2, UserPlus, Server, Copy, HelpCircle, Save, Image, Upload, Globe,
+  Edit2
 } from 'lucide-react';
 import { SystemConfig, User, UserRole } from '../types';
 import { apiService } from '../utils/apiService';
@@ -28,11 +29,12 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
   const [isCopied, setIsCopied] = React.useState(false);
 
   // User database state
+  const [editingUser, setEditingUser] = React.useState<User | null>(null);
   const [newUsername, setNewUsername] = React.useState('');
   const [newNama, setNewNama] = React.useState('');
   const [newRole, setNewRole] = React.useState<UserRole>('Operator Bidang');
   const [newBidang, setNewBidang] = React.useState('Ormas');
-  const [newPassword, setNewPassword] = React.useState('operator123');
+  const [newPassword, setNewPassword] = React.useState('');
 
   // Logo state
   const [logoBase64, setLogoBase64] = React.useState(config.customLogo || '');
@@ -246,39 +248,107 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
   };
 
   // User CRUD actions
-  const handleAddUser = () => {
+  const handleEditUserClick = (user: User) => {
+    setEditingUser(user);
+    setNewUsername(user.username);
+    setNewNama(user.nama);
+    setNewRole(user.role);
+    setNewBidang(user.bidang || 'Ormas');
+    setNewPassword(user.password || '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    setNewUsername('');
+    setNewNama('');
+    setNewRole('Operator Bidang');
+    setNewBidang('Ormas');
+    setNewPassword('');
+  };
+
+  const handleSaveUser = () => {
     if (!newUsername || !newNama) {
       alert('Nama dan Username wajib diisi!');
       return;
     }
+    
     const currentUsers = JSON.parse(localStorage.getItem('Users') || '[]');
-    const isExist = currentUsers.some((u: any) => u.username === newUsername);
-    if (isExist) {
-      alert('Username sudah terdaftar!');
-      return;
+
+    if (editingUser) {
+      // Update Mode
+      const isExist = currentUsers.some((u: any) => u.username === newUsername && u.id !== editingUser.id);
+      if (isExist) {
+        alert('Username sudah terdaftar!');
+        return;
+      }
+
+      const updatedUsers = currentUsers.map((u: any) => {
+        if (u.id === editingUser.id) {
+          const updatedUser: User = {
+            ...u,
+            username: newUsername,
+            nama: newNama,
+            role: newRole,
+            bidang: newRole === 'Operator Bidang' ? newBidang : undefined,
+          };
+          if (newPassword.trim()) {
+            updatedUser.password = newPassword.trim();
+          }
+          return updatedUser;
+        }
+        return u;
+      });
+
+      localStorage.setItem('Users', JSON.stringify(updatedUsers));
+      
+      // Update current logged-in user in localStorage and state if editing own profile
+      const loggedInUser = apiService.getCurrentUser();
+      if (loggedInUser && loggedInUser.id === editingUser.id) {
+        const updatedSelf = updatedUsers.find((u: any) => u.id === loggedInUser.id);
+        if (updatedSelf) {
+          apiService.setCurrentUser(updatedSelf);
+        }
+      }
+
+      alert(`Pengguna ${newNama} berhasil diperbarui!`);
+      setEditingUser(null);
+    } else {
+      // Create Mode
+      const isExist = currentUsers.some((u: any) => u.username === newUsername);
+      if (isExist) {
+        alert('Username sudah terdaftar!');
+        return;
+      }
+
+      const newUser: User = {
+        id: `usr-${Date.now()}`,
+        username: newUsername,
+        nama: newNama,
+        role: newRole,
+        bidang: newRole === 'Operator Bidang' ? newBidang : undefined,
+        password: newPassword.trim() || 'operator123'
+      };
+
+      currentUsers.push(newUser);
+      localStorage.setItem('Users', JSON.stringify(currentUsers));
+      alert(`Pengguna Baru ${newNama} berhasil ditambahkan! Password default: ${newPassword.trim() || 'operator123'}`);
     }
 
-    const newUser: User = {
-      id: `usr-${Date.now()}`,
-      username: newUsername,
-      nama: newNama,
-      role: newRole,
-      bidang: newBidang
-    };
-
-    currentUsers.push(newUser);
-    localStorage.setItem('Users', JSON.stringify(currentUsers));
-    
-    // Seed password entry offline simulated for login verify
-    // Keep credentials inside code or storage safely
     setNewUsername('');
     setNewNama('');
+    setNewRole('Operator Bidang');
+    setNewBidang('Ormas');
+    setNewPassword('');
     onUsersUpdate();
-    alert(`Pengguna Baru ${newNama} berhasil ditambahkan! Password default Anda: operator123`);
   };
 
   const handleDeleteUser = (id: string) => {
-    if (id === 'usr-1') {
+    const loggedInUser = apiService.getCurrentUser();
+    if (loggedInUser && id === loggedInUser.id) {
+      alert('Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan!');
+      return;
+    }
+    if (id === 'usr-1' && (!loggedInUser || loggedInUser.id !== 'usr-1')) {
       alert('Administrator utama tidak boleh dihapus!');
       return;
     }
@@ -287,6 +357,7 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
       const filtered = currentUsers.filter((u: any) => u.id !== id);
       localStorage.setItem('Users', JSON.stringify(filtered));
       onUsersUpdate();
+      alert('Pengguna berhasil dihapus.');
     }
   };
 
@@ -460,11 +531,11 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
       {/* Panel 2: User management (Restricted list) */}
       {activeSubTab === 'user' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Add User form */}
+          {/* Add/Edit User form */}
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm h-fit">
             <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
               <UserPlus className="w-4 h-4 text-teal-600" />
-              <span>Daftarkan Pengguna Baru</span>
+              <span>{editingUser ? 'Ubah Data Pengguna' : 'Daftarkan Pengguna Baru'}</span>
             </h3>
 
             <div className="space-y-3.5">
@@ -483,6 +554,7 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
                   type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)}
                   placeholder="Contoh: budi_ormas"
                   className="w-full p-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-xs text-gray-800 dark:text-white outline-none"
+                  disabled={editingUser?.id === 'usr-1'} // Avoid renaming recovery admin username to maintain system sanity
                 />
               </div>
 
@@ -491,6 +563,7 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
                 <select 
                   value={newRole} onChange={(e) => setNewRole(e.target.value as UserRole)}
                   className="w-full p-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-xs text-gray-800 dark:text-white outline-none cursor-pointer"
+                  disabled={editingUser?.id === 'usr-1'} // Main admin role is locked to Administrator
                 >
                   <option value="Operator Bidang">Operator Bidang (Tambah & Ubah)</option>
                   <option value="Pimpinan">Pimpinan (Hanya Baca & Ekspor Laporan)</option>
@@ -513,14 +586,36 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={handleAddUser}
-                className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/10 cursor-pointer"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>Tambahkan Pengguna</span>
-              </button>
+              <div>
+                <label className="text-xs font-bold text-gray-500 block mb-1">
+                  {editingUser ? 'Ganti Password (Kosongkan jika tetap)' : 'Password Akun'}
+                </label>
+                <input 
+                  type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={editingUser ? 'Biarkan kosong jika tidak diganti' : 'Default: operator123 jika kosong'}
+                  className="w-full p-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-xs text-gray-800 dark:text-white outline-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1.5">
+                {editingUser && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-700 dark:text-white rounded-xl text-xs font-bold transition-all text-center cursor-pointer border border-gray-200 dark:border-slate-600"
+                  >
+                    Batal
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveUser}
+                  className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/10 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{editingUser ? 'Simpan Perubahan' : 'Tambahkan Pengguna'}</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -559,11 +654,22 @@ export default function SystemSettings({ config, onConfigSave, users, onUsersUpd
                             {user.role}
                           </span>
                         </td>
-                        <td className="p-3 text-right">
+                        <td className="p-3 text-right flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleEditUserClick(user)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              editingUser?.id === user.id
+                                ? 'bg-teal-600 text-white hover:bg-teal-700'
+                                : 'text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/30'
+                            }`}
+                            title="Ubah data pengguna"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => handleDeleteUser(user.id)}
-                            disabled={user.role === 'Administrator'}
-                            className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
+                            disabled={user.id === 'usr-1' || (apiService.getCurrentUser()?.id === user.id)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
                             title="Cabut akses login"
                           >
                             <Trash2 className="w-4 h-4" />
